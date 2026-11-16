@@ -58,10 +58,21 @@ def next_counter(db: Session, name: str) -> int:
     return row.value
 
 
+_STANDALONE = False
+
+
+def set_standalone(value: bool) -> None:
+    """Standalone servers have no cloud peer, so new outbox events are recorded as already delivered."""
+    global _STANDALONE
+    _STANDALONE = value
+
+
 def enqueue(db: Session, event_type: str, payload: dict) -> None:
     """Transactional outbox: written in the same transaction as the business change."""
+    now = utcnow()
     db.add(OutboxEvent(event_id=uuid.uuid4(), event_type=event_type, payload=to_jsonable(payload),
-                       status="pending", attempts=0, created_at=utcnow()))
+                       status="synced" if _STANDALONE else "pending", attempts=0, created_at=now,
+                       synced_at=now if _STANDALONE else None))
 
 
 def audit(db: Session, settings: Settings, action: str, detail: str, actor=None, *,

@@ -67,7 +67,7 @@ def login(db: Session, settings: Settings, peer: PeerClient, username: str, pass
           *, terminal: str, ip: str, user_agent: str) -> dict:
     username = username.strip().lower()
     user = db.scalar(select(User).where(User.username == username))
-    offline = settings.is_hospital and not cloud_link_ok(db)
+    offline = settings.is_hospital and not settings.is_standalone and not cloud_link_ok(db)
     if user and user.locked_until and user.locked_until > utcnow():
         raise AppError("LOCKED", "Account temporarily locked after repeated failed sign-ins. Try again later or ask an administrator to unlock it.",
                        423, locked_until=iso(user.locked_until))

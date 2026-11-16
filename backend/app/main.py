@@ -14,7 +14,8 @@ from .db import make_engine, make_sessionmaker
 from .peer import PeerClient
 from .routers import auth, insights, internal, operations, users
 from .services.auth import RateLimiter
-from .services.sync_worker import SyncRunner
+from .services.sync_worker import SyncRunner, clear_standalone_queue
+from .store import set_standalone
 from .store import ensure_defaults
 from .util import AppError
 
@@ -34,6 +35,7 @@ def create_app(settings: Settings | None = None, *, peer_client: httpx.Client | 
     engine = make_engine(settings.database_url)
     SessionLocal = make_sessionmaker(engine)
     peer = PeerClient(settings, peer_client)
+    set_standalone(settings.is_standalone)
     run_worker = settings.is_hospital and (settings.run_sync_worker if start_worker is None else start_worker)
 
     @asynccontextmanager
@@ -42,6 +44,11 @@ def create_app(settings: Settings | None = None, *, peer_client: httpx.Client | 
             ensure_defaults(SessionLocal)
         except Exception:
             log.exception("Could not initialise defaults — have migrations been applied? (alembic upgrade head)")
+        if settings.is_standalone:
+            try:
+                clear_standalone_queue(SessionLocal)
+            except Exception:
+                log.exception("Could not clear the old sync queue")
         if app.state.runner:
             app.state.runner.start()
         yield
@@ -88,10 +95,4 @@ def create_app(settings: Settings | None = None, *, peer_client: httpx.Client | 
     for router in (auth.router, operations.router, insights.router, users.router):
         app.include_router(router)
     app.include_router(internal.hospital if settings.is_hospital else internal.cloud)
-
-    @app.get("/")
-    @app.get("/api/health")
-    def health_check():
-        return {"status": "ok", "app": "Dispensary Desk API", "role": settings.app_role}
-
     return app

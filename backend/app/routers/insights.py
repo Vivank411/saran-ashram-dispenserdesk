@@ -67,6 +67,8 @@ def sync_run(request: Request, actor: Actor = Depends(require("sync.manage")), d
     app = request.app
     if app.state.settings.is_cloud:
         return forward_to_hospital(request, db, actor, "/sync/run")
+    if app.state.settings.is_standalone:
+        return {"status": "ok", "applied": 0, "duplicates": 0}
     return run_cycle(app.state.settings, app.state.sessionmaker, app.state.peer, force=True)
 
 

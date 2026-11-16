@@ -30,6 +30,17 @@ def outbox_counts(db: Session) -> dict:
             "conflicts": counts.get("conflict", 0), "synced": counts.get("synced", 0) + counts.get("resolved", 0)}
 
 
+def clear_standalone_queue(SessionLocal: sessionmaker) -> int:
+    """Standalone: there is no cloud to deliver to, so mark anything queued earlier as delivered."""
+    with SessionLocal() as db:
+        now = utcnow()
+        rows = db.scalars(select(OutboxEvent).where(OutboxEvent.status.in_(("pending", "failed")))).all()
+        for e in rows:
+            e.status, e.synced_at, e.last_error = "synced", now, None
+        db.commit()
+        return len(rows)
+
+
 def event_dict(e: OutboxEvent) -> dict:
     return {"event_id": str(e.event_id), "seq": e.seq, "event_type": e.event_type, "payload": e.payload,
             "created_at": iso(e.created_at)}

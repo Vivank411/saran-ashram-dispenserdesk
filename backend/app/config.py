@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     sync_batch_size: int = 100
     user_pull_interval_seconds: float = 30.0
     run_sync_worker: bool = False
+    # standalone = one server only (e.g. Render + Neon): no cloud peer, nothing is queued for sync
+    standalone: bool = False
 
     # inventory
     low_stock_threshold_default: int = 50
@@ -58,6 +60,10 @@ class Settings(BaseSettings):
     @property
     def is_hospital(self) -> bool:
         return self.app_role == "hospital"
+
+    @property
+    def is_standalone(self) -> bool:
+        return self.is_hospital and self.standalone
 
     @model_validator(mode="after")
     def _production_guards(self) -> "Settings":

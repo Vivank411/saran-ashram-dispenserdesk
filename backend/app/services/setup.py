@@ -56,12 +56,14 @@ def run_setup(db: Session, settings: Settings, peer: PeerClient, data: SetupIn) 
         raise _already()
     account = data.model_dump(include={"full_name", "username", "mobile", "password"})
     if settings.is_hospital:
-        try:
-            snap = peer.call_json("POST", "/api/internal/setup", {"account": account})["user"]
-            upsert_user_snapshot(db, snap)
-        except PeerUnavailable:
-            user = create_first_admin(db, settings, account)
-            snap = user_snapshot(user)
+        if settings.is_standalone:
+            create_first_admin(db, settings, account)
+        else:
+            try:
+                snap = peer.call_json("POST", "/api/internal/setup", {"account": account})["user"]
+                upsert_user_snapshot(db, snap)
+            except PeerUnavailable:
+                create_first_admin(db, settings, account)
         changes = apply_settings(db, settings, data.full_name, data.low_stock_threshold, data.hospital_name)
         audit(db, settings, "First-time setup", f"Administrator '{data.username}' · {' · '.join(changes) or 'defaults kept'}",
               username=data.username)

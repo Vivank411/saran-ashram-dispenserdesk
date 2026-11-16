@@ -61,10 +61,12 @@ def create_user(db: Session, settings: Settings, actor: Actor, data: UserCreate)
         raise AppError("USERNAME_TAKEN", "That username is already taken.", 409)
     validate_password_policy(data.password, data.username)
     user = User(id=uuid.uuid4(), username=data.username, full_name=data.full_name, mobile=data.mobile, role=data.role,
-                password_hash=hash_password(data.password), is_active=True, is_verified=False,
-                offline_login_enabled=False, token_version=1, directory_version=1, failed_logins=0)
+                password_hash=hash_password(data.password), is_active=True, is_verified=settings.is_standalone,
+                verified_at=utcnow() if settings.is_standalone else None,
+                offline_login_enabled=settings.is_standalone, token_version=1, directory_version=1, failed_logins=0)
     db.add(user)
-    audit(db, settings, "User registered", f"{user.username} · {user.role} · awaiting mobile OTP verification", actor)
+    audit(db, settings, "User registered", f"{user.username} · {user.role} · " +
+          ("ready to sign in" if settings.is_standalone else "awaiting mobile OTP verification"), actor)
     db.commit()
     return user_public(user)
 

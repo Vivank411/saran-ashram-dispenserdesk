@@ -36,7 +36,11 @@ def last_sync(db: Session, settings: Settings) -> str | None:
 def system_status(app: FastAPI, db: Session) -> dict:
     s: Settings = app.state.settings
     base = {"role": s.app_role, "hospital_name": display_name(db, s), "server_time": utcnow().isoformat(),
-            "low_stock_threshold": low_stock_threshold(db, s), "last_sync": last_sync(db, s), "timezone": s.timezone}
+            "low_stock_threshold": low_stock_threshold(db, s), "last_sync": last_sync(db, s), "timezone": s.timezone,
+            "standalone": s.is_standalone}
+    if s.is_standalone:
+        return {**base, "hospital_reachable": True, "live_operations": True, "cloud_reachable": True,
+                "link_checked_at": None, "pending": 0, "failed": 0, "conflicts": 0}
     if s.is_hospital:
         link = get_state(db, "link", {}) or {}
         counts = outbox_counts(db)

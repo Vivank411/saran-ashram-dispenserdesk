@@ -42,7 +42,7 @@ export interface AuditEntry {
 export interface SystemStatus {
   role: "hospital" | "cloud"; hospital_name: string; server_time: string; low_stock_threshold: number; last_sync: string | null;
   timezone: string; hospital_reachable: boolean; live_operations: boolean; cloud_reachable: boolean; link_checked_at: string | null;
-  pending: number | null; failed: number | null; conflicts: number;
+  pending: number | null; failed: number | null; conflicts: number; standalone?: boolean;
 }
 export interface SyncEvent {
   seq: number; event_id: string; event_type: string; status: string; attempts: number | null; created_at: string;

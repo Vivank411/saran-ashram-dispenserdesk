@@ -63,6 +63,7 @@ export default function Layout() {
 
   const conn = conflicts ? { tone: "bad", icon: "alertCircle" as IconName, text: `${conflicts} sync conflict${conflicts > 1 ? "s" : ""}` }
     : isCloud ? (live ? { tone: "good", icon: "server" as IconName, text: "Hospital server online" } : { tone: "bad", icon: "cloudOff" as IconName, text: "Hospital server unreachable" })
+    : status?.standalone ? { tone: "good", icon: "server" as IconName, text: "Standalone server" }
     : status?.cloud_reachable ? (queued ? { tone: "warn", icon: "sync" as IconName, text: `Syncing · ${queued} pending` } : { tone: "good", icon: "cloud" as IconName, text: "Cloud in sync" })
     : { tone: "warn", icon: "cloudOff" as IconName, text: `Offline · ${queued} queued` };
   const connCls = { good: "border-good-line bg-good-soft text-good", warn: "border-warn-line bg-warn-soft text-warn", bad: "border-danger-line bg-danger-soft text-danger" }[conn.tone];
@@ -110,7 +111,7 @@ export default function Layout() {
           <div className="flex items-center gap-2 text-[12px] font-medium text-slate-200">
             <span className={`h-2 w-2 rounded-full ${conn.tone === "good" ? "bg-emerald-400" : conn.tone === "warn" ? "bg-amber-400" : "bg-red-400"}`} />{conn.text}
           </div>
-          <div className="mt-1 text-[11px] text-slate-400">Last sync {ago(status?.last_sync)}</div>
+          <div className="mt-1 text-[11px] text-slate-400">{status?.standalone ? "Data stored on this server" : <>Last sync {ago(status?.last_sync)}</>}</div>
         </div>
       </aside>
 

@@ -55,11 +55,11 @@ def test_signup_on_cloud(tmp_path):
     assert r.status_code == 200 and r.json()["session"]["offline"] is True
 
 
-def test_signup_at_hospital_needs_internet_once(tmp_path):
+def test_signup_at_hospital_works_without_cloud(tmp_path):
     e = fresh(tmp_path)
     e.cut()
     r = TestClient(e.hospital).post("/api/auth/setup", json=SIGNUP)
-    assert r.status_code == 503 and r.json()["error"]["code"] == "SETUP_NEEDS_INTERNET"
+    assert r.status_code == 200, r.text
 
 
 def test_signup_validation(tmp_path):

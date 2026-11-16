@@ -15,7 +15,8 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 def _hospital(request: Request) -> bool:
-    return request.app.state.settings.is_hospital
+    settings = request.app.state.settings
+    return settings.is_hospital and not settings.standalone
 
 
 @router.get("")
@@ -26,18 +27,7 @@ def list_users(_: Actor = Depends(require("users.manage")), db: Session = Depend
 @router.post("")
 def create_user(body: UserCreate, request: Request, actor: Actor = Depends(require("users.manage")), db: Session = Depends(get_db)):
     if _hospital(request):
-        try:
-            return forward_to_directory(request, db, actor, "/users", body.model_dump())
-        except AppError as e:
-            if e.code == "DIRECTORY_OFFLINE":
-                user = directory.create_user(db, request.app.state.settings, actor, body)
-                user_obj = db.get(User, uuid.UUID(user["id"]))
-                if user_obj:
-                    user_obj.is_verified = True
-                    user_obj.offline_login_enabled = True
-                    db.commit()
-                return user
-            raise
+        return forward_to_directory(request, db, actor, "/users", body.model_dump())
     return directory.create_user(db, request.app.state.settings, actor, body)
 
 
@@ -45,12 +35,7 @@ def create_user(body: UserCreate, request: Request, actor: Actor = Depends(requi
 def update_user(user_id: uuid.UUID, body: UserUpdate, request: Request, actor: Actor = Depends(require("users.manage")),
                 db: Session = Depends(get_db)):
     if _hospital(request):
-        try:
-            return forward_to_directory(request, db, actor, f"/users/{user_id}/update", body.model_dump())
-        except AppError as e:
-            if e.code == "DIRECTORY_OFFLINE":
-                return directory.update_user(db, request.app.state.settings, actor, user_id, body)
-            raise
+        return forward_to_directory(request, db, actor, f"/users/{user_id}/update", body.model_dump())
     return directory.update_user(db, request.app.state.settings, actor, user_id, body)
 
 
@@ -58,12 +43,7 @@ def update_user(user_id: uuid.UUID, body: UserUpdate, request: Request, actor: A
 def reset_password(user_id: uuid.UUID, body: PasswordResetIn, request: Request,
                    actor: Actor = Depends(require("users.manage")), db: Session = Depends(get_db)):
     if _hospital(request):
-        try:
-            return forward_to_directory(request, db, actor, f"/users/{user_id}/reset-password", body.model_dump())
-        except AppError as e:
-            if e.code == "DIRECTORY_OFFLINE":
-                return directory.reset_password(db, request.app.state.settings, actor, user_id, body.password)
-            raise
+        return forward_to_directory(request, db, actor, f"/users/{user_id}/reset-password", body.model_dump())
     return directory.reset_password(db, request.app.state.settings, actor, user_id, body.password)
 
 
