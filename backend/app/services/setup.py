@@ -58,10 +58,10 @@ def run_setup(db: Session, settings: Settings, peer: PeerClient, data: SetupIn) 
     if settings.is_hospital:
         try:
             snap = peer.call_json("POST", "/api/internal/setup", {"account": account})["user"]
+            upsert_user_snapshot(db, snap)
         except PeerUnavailable:
-            raise AppError("SETUP_NEEDS_INTERNET", "First-time setup registers the administrator in the central user "
-                           "directory, so it needs an internet connection once. Please connect and try again.", 503)
-        upsert_user_snapshot(db, snap)
+            user = create_first_admin(db, settings, account)
+            snap = user_snapshot(user)
         changes = apply_settings(db, settings, data.full_name, data.low_stock_threshold, data.hospital_name)
         audit(db, settings, "First-time setup", f"Administrator '{data.username}' · {' · '.join(changes) or 'defaults kept'}",
               username=data.username)
