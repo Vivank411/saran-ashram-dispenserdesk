@@ -1,0 +1,72 @@
+# Hospital (local, authoritative) server.  Run from the deploy/ directory:
+#   docker compose -f docker-compose.hospital.yml --env-file .env.hospital up -d --build
+name: dispensary-hospital
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  db:
+    <<: *restart
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - hospital_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # No published ports: PostgreSQL is never exposed to the LAN or the internet.
+
+  api:
+    <<: *restart
+    build: ../backend
+    env_file: .env.hospital
+    environment:
+      APP_ROLE: hospital
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      RUN_SYNC_WORKER: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../data:/data:ro
+    ports:
+      # Published ONLY on the WireGuard address so the cloud gateway can reach /api/internal/*.
+      - "${WG_ADDRESS}:8000:8000"
+
+  web:
+    <<: *restart
+    build: ../frontend
+    environment:
+      SERVER_NAME: ${SERVER_NAME}
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/site.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/proxy.inc:/etc/nginx/conf.d/proxy.inc:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+
+  backup:
+    <<: *restart
+    build: ./backup
+    env_file: .env.hospital
+    environment:
+      BACKUP_PREFIX: hospital
+      PGHOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ${BACKUP_DIR}:/backups
+      - ./secrets/backup_passphrase:/run/secrets/backup_passphrase:ro
+
+volumes:
+  hospital_pg:

@@ -1,0 +1,138 @@
+import { useState } from "react";
+import type { Listing, User } from "../api/types";
+import { useAuth } from "../auth/AuthContext";
+import { Icon } from "../components/Icon";
+import { useToast } from "../components/Toasts";
+import { Avatar, Dot, Field, Modal, Notice, PageHeader, Panel, Table } from "../components/ui";
+import { ago, fmtTime } from "../lib/format";
+import { useAction, useGet, useStatus } from "../lib/hooks";
+
+interface Meta { roles: string[]; permissions: Record<string, string>; matrix: Record<string, string[]> }
+
+export default function UsersPage() {
+  const { user: me } = useAuth();
+  const { data: status } = useStatus();
+  const toast = useToast();
+  const { data } = useGet<Listing<User>>(["users"], "/users");
+  const { data: meta } = useGet<Meta>(["roles"], "/meta/roles");
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [resetting, setResetting] = useState<User | null>(null);
+  const directoryOk = status?.role === "cloud" || !!status?.cloud_reachable;
+  const roles = meta?.roles ?? ["Admin", "Biller"];
+
+  const create = useAction<object, User>("post", "/users", (u) => { toast(`${u.full_name} added`); setCreating(false); });
+  const update = useAction<{ id: string } & object, User>("patch", (b) => `/users/${b.id}`, () => { toast("User updated"); setEditing(null); });
+  const reset = useAction<{ id: string; password: string }, User>("post", (b) => `/users/${b.id}/reset-password`, () => { toast("Password reset — the user must sign in again"); setResetting(null); });
+  const unlock = useAction<{ id: string }>("post", (b) => `/users/${b.id}/unlock`, () => toast("Account unlocked"));
+  const revoke = useAction<{ id: string }>("post", (b) => `/users/${b.id}/revoke-sessions`, () => toast("All sessions signed out"));
+
+  const [form, setForm] = useState({ full_name: "", username: "", mobile: "", role: "Biller", password: "" });
+  const [edit, setEdit] = useState({ role: "", is_active: true, offline_login_enabled: true });
+  const [newPassword, setNewPassword] = useState("");
+  const users = data?.items ?? [];
+
+  return (
+    <>
+      <PageHeader title="Users & access" sub="Staff accounts and what each role can do. Every permission is enforced by the server."
+        actions={<button className="btn btn-primary" disabled={!directoryOk} onClick={() => setCreating(true)}><Icon name="plus" />Add user</button>} />
+      {!directoryOk && <Notice tone="warn">The internet is unavailable, so accounts can't be added or changed right now. Existing staff can still sign in offline,
+        and you can still unlock accounts or sign users out.</Notice>}
+
+      <Panel title="Staff" sub={`${users.length} account${users.length === 1 ? "" : "s"}`} flush>
+        <Table colSpan={6} head={<><th>User</th><th>Role</th><th>Mobile</th><th>Status</th><th>Last sign-in</th><th /></>}>
+          {users.map((u) => {
+            const locked = !!u.locked_until && new Date(u.locked_until) > new Date();
+            return (
+              <tr key={u.id}>
+                <td>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={u.full_name} />
+                    <div><div className="font-semibold text-ink">{u.full_name}{u.id === me?.id && <span className="pill pill-blue ml-2">You</span>}</div>
+                      <div className="text-xs text-muted">@{u.username}</div></div>
+                  </div>
+                </td>
+                <td><span className={`pill ${u.role === "Admin" ? "pill-accent" : "pill-grey"}`}>{u.role === "Admin" && <Icon name="shield" className="h-3 w-3" />}{u.role}</span></td>
+                <td className="tnum">{u.mobile_masked}</td>
+                <td>
+                  <div className="flex flex-wrap gap-1.5">
+                    {!u.is_active ? <span className="pill pill-grey"><Dot tone="slate" />Deactivated</span>
+                      : locked ? <span className="pill pill-bad"><Dot tone="bad" />Locked until {fmtTime(u.locked_until!)}</span>
+                      : <span className="pill"><Dot tone="good" />Active</span>}
+                    {!u.is_verified && <span className="pill pill-warn">Mobile not verified</span>}
+                    {u.offline_login_enabled && <span className="pill pill-grey">Offline sign-in</span>}
+                  </div>
+                </td>
+                <td className="text-muted">{ago(u.last_login_at)}</td>
+                <td>
+                  <div className="flex justify-end gap-1.5">
+                    <button className="btn btn-sm" disabled={!directoryOk} onClick={() => { setEditing(u); setEdit({ role: u.role, is_active: u.is_active, offline_login_enabled: u.offline_login_enabled }); }}><Icon name="edit" className="h-3.5 w-3.5" />Edit</button>
+                    <button className="btn btn-sm" disabled={!directoryOk} onClick={() => { setResetting(u); setNewPassword(""); }}><Icon name="key" className="h-3.5 w-3.5" />Password</button>
+                    {locked && <button className="btn btn-sm" onClick={() => unlock.mutate({ id: u.id })}><Icon name="unlock" className="h-3.5 w-3.5" />Unlock</button>}
+                    {u.id !== me?.id && <button className="btn btn-sm btn-danger" title="Sign this user out everywhere" onClick={() => confirm(`Sign ${u.full_name} out of all devices?`) && revoke.mutate({ id: u.id })}><Icon name="logout" className="h-3.5 w-3.5" /></button>}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </Table>
+      </Panel>
+
+      {meta && (
+        <Panel title="What each role can do" sub="Remote users get exactly the same permissions as at the hospital." flush>
+          <Table head={<><th>Permission</th>{meta.roles.map((r) => <th key={r} className="text-center">{r}</th>)}</>}>
+            {Object.entries(meta.permissions).map(([p, label]) => (
+              <tr key={p}><td className="text-ink-soft">{label}</td>
+                {meta.roles.map((r) => <td key={r} className="text-center">{meta.matrix[r].includes(p)
+                  ? <Icon name="check" className="mx-auto h-4 w-4 text-good" strokeWidth={2.4} />
+                  : <span className="text-slate-300">—</span>}</td>)}
+              </tr>
+            ))}
+          </Table>
+          <p className="border-t border-line px-5 py-3 text-xs text-muted">Billers can change stock and rates by sending a request; it is applied only after an Admin approves it.</p>
+        </Panel>
+      )}
+
+      {creating && (
+        <Modal title="Add a user" onClose={() => setCreating(false)} wide
+          sub="They verify their mobile number with a one-time code on first sign-in. After that they can also sign in offline at the hospital."
+          footer={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn btn-primary" disabled={create.isPending} onClick={() => create.mutate(form)}>Add user</button></>}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Full name"><input className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
+            <Field label="Username" hint="Lowercase letters, numbers, dot or underscore"><input className="input" value={form.username} placeholder="e.g. priya.s" onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} /></Field>
+            <Field label="Mobile number"><input className="input" value={form.mobile} placeholder="+91 98xxx xxxxx" onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></Field>
+            <Field label="Role">
+              <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{roles.map((r) => <option key={r}>{r}</option>)}</select>
+            </Field>
+            <Field label="Temporary password" hint="At least 8 characters" className="sm:col-span-2"><input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
+          </div>
+        </Modal>
+      )}
+      {editing && (
+        <Modal title={`Edit ${editing.full_name}`} sub="Changing the role or deactivating the account signs the user out immediately." onClose={() => setEditing(null)}
+          footer={<><button className="btn" onClick={() => setEditing(null)}>Cancel</button><button className="btn btn-primary" disabled={update.isPending} onClick={() => update.mutate({ id: editing.id, ...edit })}>Save changes</button></>}>
+          <div className="space-y-4">
+            <Field label="Role"><select className="input" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>{roles.map((r) => <option key={r}>{r}</option>)}</select></Field>
+            <label className="flex items-center justify-between gap-4 rounded-lg border border-line px-4 py-3">
+              <span><span className="block text-[13px] font-medium text-ink">Account active</span><span className="text-xs text-muted">Inactive users cannot sign in</span></span>
+              <input type="checkbox" className="h-4 w-4 accent-teal-700" checked={edit.is_active} onChange={(e) => setEdit({ ...edit, is_active: e.target.checked })} />
+            </label>
+            <label className="flex items-center justify-between gap-4 rounded-lg border border-line px-4 py-3">
+              <span><span className="block text-[13px] font-medium text-ink">Allow offline sign-in</span>
+                <span className="text-xs text-muted">{editing.is_verified ? "Sign in at the hospital when the internet is down" : "Available after mobile verification"}</span></span>
+              <input type="checkbox" className="h-4 w-4 accent-teal-700" checked={edit.offline_login_enabled} disabled={!editing.is_verified}
+                onChange={(e) => setEdit({ ...edit, offline_login_enabled: e.target.checked })} />
+            </label>
+          </div>
+        </Modal>
+      )}
+      {resetting && (
+        <Modal title={`Reset password · ${resetting.full_name}`} sub="The user is signed out everywhere and must use the new password." onClose={() => setResetting(null)}
+          footer={<><button className="btn" onClick={() => setResetting(null)}>Cancel</button><button className="btn btn-primary" disabled={newPassword.length < 8 || reset.isPending}
+            onClick={() => reset.mutate({ id: resetting.id, password: newPassword })}>Reset password</button></>}>
+          <Field label="New password" hint="At least 8 characters"><input className="input" type="password" autoFocus value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></Field>
+        </Modal>
+      )}
+    </>
+  );
+}

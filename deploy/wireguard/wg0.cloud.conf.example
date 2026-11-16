@@ -1,0 +1,11 @@
+# /etc/wireguard/wg0.conf on the CLOUD server.  Generate keys: wg genkey | tee private.key | wg pubkey > public.key
+[Interface]
+Address = 10.8.0.1/24
+ListenPort = 51820
+PrivateKey = <CLOUD_PRIVATE_KEY>
+
+[Peer]
+# Hospital server — it initiates the tunnel from behind its NAT; no inbound ports are opened at the hospital.
+PublicKey = <HOSPITAL_PUBLIC_KEY>
+PresharedKey = <PRESHARED_KEY>
+AllowedIPs = 10.8.0.2/32

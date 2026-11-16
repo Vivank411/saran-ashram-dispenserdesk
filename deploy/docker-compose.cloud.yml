@@ -1,0 +1,70 @@
+# Cloud (remote access, replica, user directory) server.  Run from the deploy/ directory:
+#   docker compose -f docker-compose.cloud.yml --env-file .env.cloud up -d --build
+name: dispensary-cloud
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  db:
+    <<: *restart
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - cloud_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # No published ports: PostgreSQL is never exposed to the internet.
+
+  api:
+    <<: *restart
+    build: ../backend
+    env_file: .env.cloud
+    environment:
+      APP_ROLE: cloud
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      COOKIE_SECURE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Published ONLY on the WireGuard address: the hospital pushes sync events here.
+      - "${WG_ADDRESS}:8000:8000"
+
+  web:
+    <<: *restart
+    build: ../frontend
+    environment:
+      SERVER_NAME: ${SERVER_NAME}
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/site.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./nginx/proxy.inc:/etc/nginx/conf.d/proxy.inc:ro
+      - ${TLS_CERT_DIR}:/etc/nginx/certs:ro
+
+  backup:
+    <<: *restart
+    build: ./backup
+    env_file: .env.cloud
+    environment:
+      BACKUP_PREFIX: cloud
+      PGHOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ${BACKUP_DIR}:/backups
+      - ./secrets/backup_passphrase:/run/secrets/backup_passphrase:ro
+
+volumes:
+  cloud_pg:

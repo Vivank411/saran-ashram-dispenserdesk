@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-canvas font-sans text-[13.5px] leading-normal text-ink antialiased; font-feature-settings: "cv11", "ss01"; }
+  ::selection { @apply bg-accent/15; }
+  :focus-visible { @apply outline-none ring-2 ring-accent-ring ring-offset-1; }
+  input[type="number"] { font-variant-numeric: tabular-nums; }
+}
+
+@layer components {
+  /* buttons */
+  .btn { @apply inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-line-strong bg-white px-3.5 text-[13px] font-semibold text-ink-soft shadow-[0_1px_2px_rgba(16,24,40,.05)] transition-colors hover:bg-slate-50 hover:text-ink disabled:pointer-events-none disabled:opacity-50; }
+  .btn-primary { @apply border-accent bg-accent text-white hover:bg-accent-dark hover:text-white; }
+  .btn-danger { @apply border-danger-line bg-white text-danger hover:bg-danger-soft hover:text-danger; }
+  .btn-ghost { @apply border-transparent bg-transparent shadow-none hover:bg-slate-100; }
+  .btn-sm { @apply h-7 rounded-md px-2.5 text-xs; }
+  .btn-lg { @apply h-11 px-5 text-sm; }
+
+  /* surfaces */
+  .panel { @apply mb-5 rounded-xl border border-line bg-white shadow-card; }
+  .panel-body { @apply p-5; }
+
+  /* forms */
+  .input { @apply h-9 w-full min-w-0 rounded-lg border border-line-strong bg-white px-3 text-[13.5px] text-ink shadow-[0_1px_2px_rgba(16,24,40,.04)] outline-none transition placeholder:text-slate-400 focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:bg-slate-50; }
+  select.input { @apply pr-8; }
+  .label { @apply text-xs font-medium text-ink-soft; }
+
+  /* badges: status colour always paired with a text label (and usually a dot/icon) */
+  .pill { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-good-line bg-good-soft px-2 py-0.5 text-[11px] font-semibold text-good; }
+  .pill-warn { @apply border-warn-line bg-warn-soft text-warn; }
+  .pill-bad { @apply border-danger-line bg-danger-soft text-danger; }
+  .pill-grey { @apply border-line bg-slate-50 text-slate-600; }
+  .pill-blue { @apply border-info-line bg-info-soft text-info; }
+  .pill-accent { @apply border-accent-ring/60 bg-accent-soft text-accent-dark; }
+
+  /* tables */
+  .tbl { @apply w-full border-separate border-spacing-0 whitespace-nowrap text-[13px]; font-variant-numeric: tabular-nums; }
+  .tbl thead th { @apply sticky top-0 z-[1] border-b border-line bg-slate-50/95 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted backdrop-blur; }
+  .tbl tbody td { @apply border-b border-line/70 px-4 py-3 align-middle text-ink-soft; }
+  .tbl tbody tr { @apply transition-colors hover:bg-slate-50/70; }
+  .tbl tbody tr:last-child td { @apply border-b-0; }
+  .tbl .num { @apply text-right tabular-nums; }
+
+  .notice { @apply mb-4 flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-[13px]; }
+  .kbd { @apply rounded border border-line-strong bg-white px-1.5 py-px font-mono text-[10px] font-semibold text-muted shadow-[0_1px_0_#d3dae1]; }
+  .tnum { font-variant-numeric: tabular-nums; }
+}

@@ -1,0 +1,20 @@
+# secrets & environment
+deploy/.env.hospital
+deploy/.env.cloud
+deploy/secrets/
+deploy/nginx/certs/
+.env
+
+# python
+backend/.venv/
+backend/.devdata/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.db-shm
+*.db-wal
+
+# node
+frontend/node_modules/
+frontend/dist/

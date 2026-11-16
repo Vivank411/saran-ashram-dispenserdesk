@@ -1,0 +1,13 @@
+# /etc/wireguard/wg0.conf on the HOSPITAL server.
+[Interface]
+Address = 10.8.0.2/24
+PrivateKey = <HOSPITAL_PRIVATE_KEY>
+
+[Peer]
+# Cloud server
+PublicKey = <CLOUD_PUBLIC_KEY>
+PresharedKey = <PRESHARED_KEY>
+Endpoint = dispensary.example-hospital.in:51820
+AllowedIPs = 10.8.0.1/32
+# Keeps the NAT mapping open so the cloud can always reach the hospital API through the tunnel.
+PersistentKeepalive = 25
