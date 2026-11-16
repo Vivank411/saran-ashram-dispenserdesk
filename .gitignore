@@ -4,6 +4,8 @@ deploy/.env.cloud
 deploy/secrets/
 deploy/nginx/certs/
 .env
+.env.local
+backend/.env
 
 # python
 backend/.venv/
@@ -18,3 +20,5 @@ __pycache__/
 # node
 frontend/node_modules/
 frontend/dist/
+.neon
+node_modules/
