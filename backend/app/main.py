@@ -88,4 +88,10 @@ def create_app(settings: Settings | None = None, *, peer_client: httpx.Client | 
     for router in (auth.router, operations.router, insights.router, users.router):
         app.include_router(router)
     app.include_router(internal.hospital if settings.is_hospital else internal.cloud)
+
+    @app.get("/")
+    @app.get("/api/health")
+    def health_check():
+        return {"status": "ok", "app": "Dispensary Desk API", "role": settings.app_role}
+
     return app
