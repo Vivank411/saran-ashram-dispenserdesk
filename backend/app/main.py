@@ -106,4 +106,26 @@ def create_app(settings: Settings | None = None, *, peer_client: httpx.Client | 
     for router in (auth.router, operations.router, insights.router, users.router):
         app.include_router(router)
     app.include_router(internal.hospital if settings.is_hospital else internal.cloud)
+    if settings.static_dir:
+        _serve_web_app(app, settings.static_dir)
     return app
+
+
+def _serve_web_app(app: FastAPI, static_dir: str) -> None:
+    """Serve the built React app (desktop install): real files as-is, every other non-API path -> index.html."""
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    root = Path(static_dir).resolve()
+    index = root / "index.html"
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def _web(path: str):
+        if path.startswith("api/") or path == "api":
+            return JSONResponse({"error": {"code": "NOT_FOUND", "message": "Not found."}}, status_code=404)
+        target = (root / path).resolve()
+        if path and target.is_file() and target.is_relative_to(root):
+            headers = {"Cache-Control": "public, max-age=31536000, immutable"} if path.startswith("assets/") else None
+            return FileResponse(target, headers=headers)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})

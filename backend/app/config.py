@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     run_sync_worker: bool = False
     # standalone = one server only (e.g. Render + Neon): no cloud peer, nothing is queued for sync
     standalone: bool = False
+    # desktop = Windows installer build (desktop/): standalone + SQLite file + serves the web app itself
+    desktop: bool = False
+    static_dir: str = ""  # built frontend (frontend/dist) to serve at "/" — empty = API only
 
     # Email OTP for standalone mode: a code is emailed the first time a user signs in on a new device,
     # then that device is trusted for trusted_device_days. Users without an email sign in with password only.
@@ -95,7 +98,7 @@ class Settings(BaseSettings):
                     raise ValueError(f"{name.upper()} must be a random value of at least 32 characters in production")
             if self.dev_expose_otp:
                 raise ValueError("DEV_EXPOSE_OTP must be false in production")
-            if self.database_url.startswith("sqlite"):
+            if self.database_url.startswith("sqlite") and not self.desktop:
                 raise ValueError("Production requires PostgreSQL (DATABASE_URL)")
             if self.email_otp_enabled:
                 if self.email_provider == "console":
