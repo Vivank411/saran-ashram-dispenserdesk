@@ -67,3 +67,21 @@ def test_admin_can_add_a_biller_who_signs_in_without_otp(app):
     assert r.status_code == 200, r.text
     b = TestClient(app).post("/api/auth/login", json={"username": "biller1", "password": "Biller#2026x"}).json()
     assert b["status"] == "ok" and b["session"]["offline"] is False
+
+
+def test_simple_password_creates_user_who_can_sign_in(app):
+    c = _admin(app)
+    new = {"full_name": "Ravi Kumar", "username": "ravi", "mobile": "9876543210", "role": "Biller"}
+    r = c.post("/api/users", json={**new, "password": "abc12"})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "WEAK_PASSWORD"
+    assert c.post("/api/users", json={**new, "password": "ravi12"}).status_code == 200
+    r = TestClient(app, headers={"X-Terminal-Id": "PC-2"}).post("/api/auth/login", json={"username": "ravi", "password": "ravi12"})
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+
+
+def test_mobile_optional_and_errors_are_readable(app):
+    c = _admin(app)
+    r = c.post("/api/users", json={"full_name": "Vivank", "username": "viv", "mobile": "", "role": "Biller", "password": "viv123"})
+    assert r.status_code == 200, r.text
+    r = c.post("/api/users", json={"full_name": "Asha", "username": "asha", "mobile": "12", "role": "Biller", "password": "asha12"})
+    assert r.status_code == 422 and "valid mobile number" in r.json()["error"]["message"]

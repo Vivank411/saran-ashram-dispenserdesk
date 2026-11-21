@@ -22,8 +22,19 @@ from .util import AppError
 log = logging.getLogger("dispensary")
 
 
+_FRIENDLY = {
+    "username": "Username must be 3–40 characters: lowercase letters, numbers, dot or underscore (no spaces).",
+    "mobile": "Enter a valid mobile number of 10 digits, e.g. 9876543210 or +91 98765 43210.",
+    "full_name": "Enter the full name (at least 2 characters).",
+    "email": "Enter a valid email address, e.g. name@gmail.com, or leave it empty.",
+}
+
+
 def _validation_message(errors) -> str:
     first = errors[0] if errors else {}
+    field = str(first.get("loc", [""])[-1]) if first.get("loc") else ""
+    if field in _FRIENDLY:
+        return _FRIENDLY[field]
     loc = ".".join(str(p) for p in first.get("loc", []) if p not in ("body",))
     return f"{loc}: {first.get('msg', 'invalid value')}" if loc else first.get("msg", "Invalid request.")
 
@@ -95,4 +106,26 @@ def create_app(settings: Settings | None = None, *, peer_client: httpx.Client | 
     for router in (auth.router, operations.router, insights.router, users.router):
         app.include_router(router)
     app.include_router(internal.hospital if settings.is_hospital else internal.cloud)
+    if settings.static_dir:
+        _serve_web_app(app, settings.static_dir)
     return app
+
+
+def _serve_web_app(app: FastAPI, static_dir: str) -> None:
+    """Serve the built React app (desktop install): real files as-is, every other non-API path -> index.html."""
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    root = Path(static_dir).resolve()
+    index = root / "index.html"
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def _web(path: str):
+        if path.startswith("api/") or path == "api":
+            return JSONResponse({"error": {"code": "NOT_FOUND", "message": "Not found."}}, status_code=404)
+        target = (root / path).resolve()
+        if path and target.is_file() and target.is_relative_to(root):
+            headers = {"Cache-Control": "public, max-age=31536000, immutable"} if path.startswith("assets/") else None
+            return FileResponse(target, headers=headers)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})

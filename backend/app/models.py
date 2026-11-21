@@ -24,6 +24,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(40), unique=True, index=True)
     full_name: Mapped[str] = mapped_column(String(120))
     mobile: Mapped[str] = mapped_column(String(20))
+    email: Mapped[str | None] = mapped_column(String(254))
     role: Mapped[str] = mapped_column(String(30))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -54,6 +55,18 @@ class AuthSession(Base):
     last_used_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
     revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+
+
+class TrustedDevice(Base):
+    """A browser that completed email OTP; it skips the code until expires_at (stored as a SHA-256 of the cookie)."""
+    __tablename__ = "trusted_devices"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_agent: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    last_used_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime)
 
 
 class OtpChallenge(Base):

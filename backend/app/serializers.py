@@ -55,6 +55,7 @@ def audit_dict(a: AuditLog) -> dict:
 
 def user_public(u: User) -> dict:
     return {"id": str(u.id), "username": u.username, "full_name": u.full_name, "mobile_masked": mask_mobile(u.mobile),
+            "email": u.email,
             "role": u.role, "permissions": perms_for(u.role), "is_active": u.is_active, "is_verified": u.is_verified,
             "offline_login_enabled": u.offline_login_enabled, "locked_until": iso(u.locked_until),
             "last_login_at": iso(u.last_login_at), "created_at": iso(u.created_at)}

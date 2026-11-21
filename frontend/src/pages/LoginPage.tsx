@@ -169,9 +169,11 @@ export default function LoginPage() {
               </form>
             ) : (
               <form onSubmit={submitOtp} className="flex flex-col gap-3">
-                <Notice>{otp.purpose === "verify" && <b>Verify your mobile number. </b>}A 6-digit code was sent to <b>{otp.masked_mobile}</b>.
-                  It expires in {Math.round(otp.expires_in / 60)} minutes.</Notice>
-                {otp.dev_code && <div className="rounded border border-dashed border-teal-300 bg-teal-50 p-2.5 text-xs">Development SMS: <b className="tracking-widest">{otp.dev_code}</b></div>}
+                <Notice>{otp.purpose === "verify" && <b>Verify your mobile number. </b>}{otp.purpose === "device" && <b>New device. </b>}
+                  A 6-digit code was {otp.channel === "email" ? "emailed" : "sent"} to <b>{otp.sent_to || otp.masked_mobile}</b>.
+                  It expires in {Math.round(otp.expires_in / 60)} minutes.{otp.channel === "email" && " Check your spam folder if you don't see it."}
+                  {otp.purpose === "device" && " This device will be remembered for 30 days."}</Notice>
+                {otp.dev_code && <div className="rounded border border-dashed border-teal-300 bg-teal-50 p-2.5 text-xs">{otp.channel === "email" ? "Development email" : "Development SMS"}: <b className="tracking-widest">{otp.dev_code}</b></div>}
                 <Field label="One-time code">
                   <input className="input tracking-[0.4em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus
                     value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />
@@ -206,7 +208,7 @@ function SignUpForm({ onDone }: { onDone: (username: string) => void }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (f.password.length < 8) return setError("Password must be at least 8 characters.");
+    if (f.password.length < 6) return setError("Password must be at least 6 characters.");
     if (f.password !== f.confirm) return setError("The two passwords do not match.");
     setBusy(true);
     try {
@@ -237,7 +239,7 @@ function SignUpForm({ onDone }: { onDone: (username: string) => void }) {
         <Field label="Mobile number"><input className="input" required placeholder="+91 98xxx xxxxx" value={f.mobile} onChange={set("mobile")} /></Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Password (min 8 characters)"><input className="input" type="password" required autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
+        <Field label="Password (min 6 characters)"><input className="input" type="password" required autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
         <Field label="Confirm password"><input className="input" type="password" required autoComplete="new-password" value={f.confirm} onChange={set("confirm")} /></Field>
       </div>
       <button className="btn btn-primary btn-lg mt-2 w-full" disabled={busy}>{busy ? "Setting up…" : "Create Admin account"}</button>

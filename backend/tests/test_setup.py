@@ -65,6 +65,7 @@ def test_signup_at_hospital_works_without_cloud(tmp_path):
 def test_signup_validation(tmp_path):
     e = fresh(tmp_path)
     c = TestClient(e.cloud)
-    assert c.post("/api/auth/setup", json={**SIGNUP, "password": "short"}).status_code == 422
+    r = c.post("/api/auth/setup", json={**SIGNUP, "password": "short"})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "WEAK_PASSWORD"
     assert c.post("/api/auth/setup", json={**SIGNUP, "username": "Bad Name"}).status_code == 422
     assert c.get("/api/auth/setup").json()["needs_setup"] is True

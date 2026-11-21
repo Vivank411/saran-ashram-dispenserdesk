@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..deps import Actor
-from ..models import AuthSession, User
+from ..models import AuthSession, TrustedDevice, User
 from ..peer import PeerClient, PeerUnavailable
 from ..security import create_access_token, new_refresh_token, sha256_hex, verify_password
 from ..serializers import user_public
@@ -63,8 +63,28 @@ def _fail_login(db: Session, settings: Settings, user: User | None, username: st
     return AppError("INVALID_CREDENTIALS", "Invalid username or password.", 401)
 
 
+def _trusted_device(db: Session, user: User, device_token: str | None) -> TrustedDevice | None:
+    if not device_token:
+        return None
+    dev = db.scalar(select(TrustedDevice).where(TrustedDevice.token_hash == sha256_hex(device_token)))
+    if not dev or dev.user_id != user.id or dev.expires_at < utcnow():
+        return None
+    return dev
+
+
+def trust_device(db: Session, settings: Settings, user: User, user_agent: str) -> str:
+    raw, hashed = new_refresh_token()
+    now = utcnow()
+    db.add(TrustedDevice(id=uuid.uuid4(), user_id=user.id, token_hash=hashed, user_agent=user_agent[:200],
+                         created_at=now, last_used_at=now, expires_at=now + timedelta(days=settings.trusted_device_days)))
+    audit(db, settings, "New device trusted", f"{user.username} · email code · {settings.trusted_device_days} days",
+          username=user.username)
+    db.commit()
+    return raw
+
+
 def login(db: Session, settings: Settings, peer: PeerClient, username: str, password: str,
-          *, terminal: str, ip: str, user_agent: str) -> dict:
+          *, terminal: str, ip: str, user_agent: str, device_token: str | None = None) -> dict:
     username = username.strip().lower()
     user = db.scalar(select(User).where(User.username == username))
     offline = settings.is_hospital and not settings.is_standalone and not cloud_link_ok(db)
@@ -80,6 +100,13 @@ def login(db: Session, settings: Settings, peer: PeerClient, username: str, pass
 
     if settings.is_cloud:
         return otp.start_challenge(db, settings, user, "login" if user.is_verified else "verify")
+
+    if settings.email_otp_enabled and user.email:
+        dev = _trusted_device(db, user, device_token)
+        if not dev:
+            return otp.start_challenge(db, settings, user, "device")
+        dev.last_used_at = utcnow()
+        db.commit()
 
     if not user.is_verified:
         # first-time mobile verification needs the cloud SMS service
@@ -98,6 +125,14 @@ def verify_otp(db: Session, settings: Settings, peer: PeerClient, challenge_id: 
     if settings.is_cloud:
         user, _ = otp.verify(db, settings, challenge_id, code)
         return issue_session(db, settings, user, channel="remote", terminal="Remote", offline=False, ip=ip, user_agent=user_agent)
+    if settings.is_standalone:
+        user, purpose = otp.verify(db, settings, challenge_id, code)
+        if not user.is_active:
+            raise AppError("INACTIVE", "This account is deactivated. Contact an administrator.", 403)
+        result = issue_session(db, settings, user, channel="lan", terminal=terminal, offline=False, ip=ip, user_agent=user_agent)
+        if purpose == "device":
+            result["device_token"] = trust_device(db, settings, user, user_agent)
+        return result
     try:
         data = peer.call_json("POST", "/api/internal/otp/verify", {"challenge_id": str(challenge_id), "code": code})
     except PeerUnavailable:
@@ -108,7 +143,7 @@ def verify_otp(db: Session, settings: Settings, peer: PeerClient, challenge_id: 
 
 
 def resend_otp(db: Session, settings: Settings, peer: PeerClient, challenge_id: uuid.UUID) -> dict:
-    if settings.is_cloud:
+    if settings.is_cloud or settings.is_standalone:
         return otp.resend(db, settings, challenge_id)
     try:
         return peer.call_json("POST", "/api/internal/otp/resend", {"challenge_id": str(challenge_id)})

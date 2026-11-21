@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..config import Settings
 from ..deps import Actor
-from ..models import AuthSession, User
+from ..models import AuthSession, TrustedDevice, User
 from ..peer import PeerClient
 from ..schemas import UserCreate, UserUpdate
 from ..security import hash_password, validate_password_policy
@@ -54,13 +54,18 @@ def _revoke_local_sessions(db: Session, user_id: uuid.UUID) -> None:
     now = utcnow()
     for s in db.scalars(select(AuthSession).where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))):
         s.revoked_at = now
+    for d in db.scalars(select(TrustedDevice).where(TrustedDevice.user_id == user_id)):
+        db.delete(d)  # next sign-in on any device asks for the email code again
 
 
 def create_user(db: Session, settings: Settings, actor: Actor, data: UserCreate) -> dict:
     if db.scalar(select(User).where(User.username == data.username)):
         raise AppError("USERNAME_TAKEN", "That username is already taken.", 409)
     validate_password_policy(data.password, data.username)
-    user = User(id=uuid.uuid4(), username=data.username, full_name=data.full_name, mobile=data.mobile, role=data.role,
+    if not data.mobile and not settings.is_standalone:
+        raise AppError("VALIDATION", "Mobile number is required: new users verify it with a one-time code.")
+    user = User(id=uuid.uuid4(), username=data.username, full_name=data.full_name, mobile=data.mobile,
+                email=data.email.lower() or None, role=data.role,
                 password_hash=hash_password(data.password), is_active=True, is_verified=settings.is_standalone,
                 verified_at=utcnow() if settings.is_standalone else None,
                 offline_login_enabled=settings.is_standalone, token_version=1, directory_version=1, failed_logins=0)
@@ -87,6 +92,9 @@ def update_user(db: Session, settings: Settings, actor: Actor, user_id: uuid.UUI
     offline = data.offline_login_enabled and user.is_verified
     if offline != user.offline_login_enabled:
         changes.append("offline sign-in " + ("enabled" if offline else "disabled"))
+    if data.email is not None and (data.email.lower() or None) != user.email:
+        user.email = data.email.lower() or None
+        changes.append(f"email {'set' if user.email else 'removed'}")
     if not changes:
         return user_public(user)
     revoke = data.role != user.role or not data.is_active

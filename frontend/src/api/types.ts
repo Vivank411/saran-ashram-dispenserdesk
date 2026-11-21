@@ -1,14 +1,14 @@
 export type Source = "hospital" | "cloud_replica" | "hospital_live";
 
 export interface User {
-  id: string; username: string; full_name: string; mobile_masked: string; role: string; permissions: string[];
+  id: string; username: string; full_name: string; mobile_masked: string; email?: string | null; role: string; permissions: string[];
   is_active: boolean; is_verified: boolean; offline_login_enabled: boolean; locked_until: string | null;
   last_login_at: string | null; created_at: string;
 }
 export interface SessionInfo { id: string; channel: "lan" | "remote"; terminal: string; offline: boolean; expires_at: string }
 export interface LoginOk { status: "ok"; access_token: string; user: User; session: SessionInfo }
 export interface OtpRequired {
-  status: "otp_required"; challenge_id: string; purpose: "login" | "verify"; masked_mobile: string; expires_in: number; dev_code?: string;
+  status: "otp_required"; challenge_id: string; purpose: "login" | "verify" | "device"; channel?: "sms" | "email"; sent_to?: string; masked_mobile: string; expires_in: number; dev_code?: string;
 }
 export interface Medicine {
   id: number; code: number; name: string; unit: string; stock: number; rate: string; cost: string; mrp: string; company: string;
@@ -42,7 +42,7 @@ export interface AuditEntry {
 export interface SystemStatus {
   role: "hospital" | "cloud"; hospital_name: string; server_time: string; low_stock_threshold: number; last_sync: string | null;
   timezone: string; hospital_reachable: boolean; live_operations: boolean; cloud_reachable: boolean; link_checked_at: string | null;
-  pending: number | null; failed: number | null; conflicts: number; standalone?: boolean;
+  pending: number | null; failed: number | null; conflicts: number; standalone?: boolean; email_otp?: boolean;
 }
 export interface SyncEvent {
   seq: number; event_id: string; event_type: string; status: string; attempts: number | null; created_at: string;

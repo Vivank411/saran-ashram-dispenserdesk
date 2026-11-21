@@ -1,6 +1,7 @@
 # secrets & environment
 deploy/.env.hospital
 deploy/.env.cloud
+deploy/.env.oracle
 deploy/secrets/
 deploy/nginx/certs/
 .env
@@ -22,3 +23,9 @@ frontend/node_modules/
 frontend/dist/
 .neon
 node_modules/
+
+# desktop installer build
+desktop/.buildenv/
+desktop/build/
+desktop/dist/
+desktop/Output/

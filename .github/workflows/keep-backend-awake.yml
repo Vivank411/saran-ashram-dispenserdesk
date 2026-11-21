@@ -1,0 +1,22 @@
+# Pings the Render backend every 10 minutes so the free instance never goes idle (it sleeps after 15 min).
+# Render free = 750 instance-hours/month, enough for ONE service running 24/7.
+# Note: GitHub may delay scheduled runs at busy times; add a free UptimeRobot monitor as a backup (see DEPLOYMENT_GUIDE.md).
+name: Keep backend awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping health endpoint
+        run: |
+          for i in 1 2 3; do
+            if curl -fsS --max-time 60 https://saran-ashram-dispenserdesk.onrender.com/api/health; then exit 0; fi
+            sleep 20
+          done
+          echo "Backend did not answer" && exit 1

@@ -33,11 +33,13 @@ def verify_password(password_hash: str | None, password: str) -> bool:
         return False
 
 
-def validate_password_policy(password: str, username: str) -> None:
-    if len(password) < 8:
-        raise AppError("WEAK_PASSWORD", "Password must be at least 8 characters.")
-    if password.lower() == username.lower():
-        raise AppError("WEAK_PASSWORD", "Password must not be the same as the username.")
+PASSWORD_MIN_LENGTH = 6
+
+
+def validate_password_policy(password: str, username: str = "") -> None:
+    """Simple rule: any characters, at least PASSWORD_MIN_LENGTH long."""
+    if len(password) < PASSWORD_MIN_LENGTH:
+        raise AppError("WEAK_PASSWORD", f"Password must be at least {PASSWORD_MIN_LENGTH} characters.")
 
 
 def sha256_hex(value: str | bytes) -> str:

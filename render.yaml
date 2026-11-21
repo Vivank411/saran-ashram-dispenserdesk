@@ -19,3 +19,12 @@ services:
         value: "true"
       - key: COOKIE_SECURE
         value: "true"
+      # Email sign-in code on new devices (see DEPLOYMENT_GUIDE.md, "Email OTP")
+      - key: EMAIL_OTP
+        value: "false"
+      - key: EMAIL_PROVIDER
+        value: gmail_script
+      - key: GMAIL_SCRIPT_URL
+        sync: false
+      - key: GMAIL_SCRIPT_TOKEN
+        sync: false
