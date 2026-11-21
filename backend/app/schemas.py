@@ -92,7 +92,7 @@ class SetupIn(SetupAccount):
 class UserCreate(_In):
     full_name: str = Field(min_length=2, max_length=120)
     username: str = Field(pattern=r"^[a-z0-9._]{3,40}$")
-    mobile: str = Field(pattern=r"^\+?[0-9 ]{10,16}$")
+    mobile: str = Field("", pattern=r"^(\+?[0-9 ]{10,16})?$")  # optional in standalone mode
     role: RoleName
     password: str = Field(min_length=1, max_length=200)
 

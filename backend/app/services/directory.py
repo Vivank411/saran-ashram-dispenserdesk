@@ -60,6 +60,8 @@ def create_user(db: Session, settings: Settings, actor: Actor, data: UserCreate)
     if db.scalar(select(User).where(User.username == data.username)):
         raise AppError("USERNAME_TAKEN", "That username is already taken.", 409)
     validate_password_policy(data.password, data.username)
+    if not data.mobile and not settings.is_standalone:
+        raise AppError("VALIDATION", "Mobile number is required: new users verify it with a one-time code.")
     user = User(id=uuid.uuid4(), username=data.username, full_name=data.full_name, mobile=data.mobile, role=data.role,
                 password_hash=hash_password(data.password), is_active=True, is_verified=settings.is_standalone,
                 verified_at=utcnow() if settings.is_standalone else None,

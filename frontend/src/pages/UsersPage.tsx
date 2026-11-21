@@ -9,10 +9,10 @@ import { useAction, useGet, useStatus } from "../lib/hooks";
 
 const MIN_PASSWORD = 6;
 
-function validateNewUser(f: { full_name: string; username: string; mobile: string; password: string }): string {
+function validateNewUser(f: { full_name: string; username: string; mobile: string; password: string }, mobileOptional: boolean): string {
   if (f.full_name.trim().length < 2) return "Enter the full name (at least 2 letters).";
   if (!/^[a-z0-9._]{3,40}$/.test(f.username)) return "Username: 3–40 lowercase letters, numbers, dot or underscore (no spaces).";
-  if (!/^\+?[0-9 ]{10,16}$/.test(f.mobile.trim())) return "Enter a valid mobile number (10 digits, e.g. 9876543210).";
+  if (!(mobileOptional && !f.mobile.trim()) && !/^\+?[0-9 ]{10,16}$/.test(f.mobile.trim())) return "Enter a valid mobile number (10 digits, e.g. 9876543210).";
   if (f.password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
   return "";
 }
@@ -42,9 +42,9 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [formError, setFormError] = useState("");
   const submitCreate = () => {
-    const err = validateNewUser(form);
+    const err = validateNewUser(form, !!status?.standalone);
     setFormError(err);
-    if (!err) create.mutate(form);
+    if (!err) create.mutate({ ...form, mobile: form.mobile.trim() });
   };
   const users = data?.items ?? [];
 
@@ -116,7 +116,7 @@ export default function UsersPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name"><input className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
             <Field label="Username" hint="Lowercase letters, numbers, dot or underscore"><input className="input" value={form.username} placeholder="e.g. priya.s" onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} /></Field>
-            <Field label="Mobile number"><input className="input" value={form.mobile} placeholder="+91 98xxx xxxxx" onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></Field>
+            <Field label={status?.standalone ? "Mobile number (optional)" : "Mobile number"}><input className="input" value={form.mobile} placeholder="+91 98xxx xxxxx" onChange={(e) => setForm({ ...form, mobile: e.target.value })} /></Field>
             <Field label="Role">
               <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{roles.map((r) => <option key={r}>{r}</option>)}</select>
             </Field>

@@ -22,8 +22,18 @@ from .util import AppError
 log = logging.getLogger("dispensary")
 
 
+_FRIENDLY = {
+    "username": "Username must be 3–40 characters: lowercase letters, numbers, dot or underscore (no spaces).",
+    "mobile": "Enter a valid mobile number of 10 digits, e.g. 9876543210 or +91 98765 43210.",
+    "full_name": "Enter the full name (at least 2 characters).",
+}
+
+
 def _validation_message(errors) -> str:
     first = errors[0] if errors else {}
+    field = str(first.get("loc", [""])[-1]) if first.get("loc") else ""
+    if field in _FRIENDLY:
+        return _FRIENDLY[field]
     loc = ".".join(str(p) for p in first.get("loc", []) if p not in ("body",))
     return f"{loc}: {first.get('msg', 'invalid value')}" if loc else first.get("msg", "Invalid request.")
 
