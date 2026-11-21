@@ -1,6 +1,7 @@
 # secrets & environment
 deploy/.env.hospital
 deploy/.env.cloud
+deploy/.env.oracle
 deploy/secrets/
 deploy/nginx/certs/
 .env

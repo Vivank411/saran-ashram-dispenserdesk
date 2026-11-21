@@ -1,0 +1,40 @@
+# Standalone backend on an Oracle Cloud Always Free VM (database stays on Neon, frontend on Vercel).
+# Run from the deploy/ directory:
+#   docker compose -f docker-compose.oracle.yml --env-file .env.oracle up -d --build
+name: dispensary-oracle
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *restart
+    build: ../backend
+    env_file: .env.oracle
+    environment:
+      APP_ROLE: hospital
+      STANDALONE: "true"
+      RUN_SYNC_WORKER: "false"
+      COOKIE_SECURE: "true"
+    # Not published: only Caddy (same Docker network) can reach the API.
+    expose:
+      - "8000"
+
+  caddy:
+    <<: *restart
+    image: caddy:2-alpine
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile.oracle:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
