@@ -107,6 +107,28 @@ Oracle's Always Free VM runs 24/7 with no time limit and no sleeping, unlike Ren
 
 ---
 
+## 📧 Email OTP (sign-in code on new devices, free)
+
+When this is on, each user who has an **email** gets a 6-digit code by email the first time they sign in on a new phone or computer. After that, the device is remembered for 30 days. Users without an email keep signing in with just their password.
+
+**1. Create a free Brevo account** (300 emails a day free, no card): [brevo.com](https://www.brevo.com)
+* **Senders, Domains & Dedicated IPs ➔ Senders ➔ Add a sender:** use the Gmail address the codes should come from, then click the link Brevo emails you.
+* **SMTP & API ➔ API Keys ➔ Generate a new API key.** Copy it.
+
+**2. Add these environment variables to the backend** (Render ➔ Environment, or `deploy/.env.oracle` on the Oracle VM):
+* `EMAIL_OTP` = `true`
+* `EMAIL_PROVIDER` = `brevo`
+* `EMAIL_FROM` = the sender address you verified in Brevo
+* `BREVO_API_KEY` = the key from step 1
+
+**3. Add an email to each user:** **Users & access ➔ Edit** (or fill it in when adding a user).
+
+> Codes not arriving? Check spam first. In Brevo, open **Security ➔ Authorised IPs** and turn off IP blocking: Render's IP address changes, so Brevo may block it. On the Oracle VM you can use Gmail SMTP instead (`EMAIL_PROVIDER=smtp`, with a Google **App Password**). Render's free plan blocks SMTP, so use Brevo there.
+
+> A user lost their phone? Click **Sign out** (the arrow icon) on their row in Users & access. This forgets all their trusted devices, so every device needs a new code.
+
+---
+
 ## 🔁 Everyday Update Routine (From Now On)
 
 Whenever you want to modify code (e.g., change a page, update a feature, adjust styling):

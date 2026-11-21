@@ -11,8 +11,9 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 from ..models import OtpChallenge, User
 from ..security import new_otp_code, otp_hash
-from ..store import audit
+from ..store import audit, display_name
 from ..util import AppError, mask_mobile, utcnow
+from .email import mask_email, send_email
 
 log = logging.getLogger("dispensary.sms")
 
@@ -43,9 +44,20 @@ def start_challenge(db: Session, settings: Settings, user: User, purpose: str) -
     challenge.code_hash = otp_hash(settings, challenge.id, code)
     db.add(challenge)
     db.commit()
-    send_sms(settings, user.mobile, f"{code} is your {settings.hospital_name} Dispensary Desk code. It expires in "
-                                    f"{settings.otp_ttl_seconds // 60} minutes. Do not share it.")
+    text = (f"{code} is your {settings.hospital_name} Dispensary Desk code. It expires in "
+            f"{settings.otp_ttl_seconds // 60} minutes. Do not share it.")
+    if purpose == "device":
+        name = display_name(db, settings)
+        send_email(settings, user.email, f"{code} is your {name} sign-in code",
+                   f"Hello {user.full_name},\n\n{code} is your sign-in code for {name}. It expires in "
+                   f"{settings.otp_ttl_seconds // 60} minutes. Do not share it.\n\nSomeone (hopefully you) is signing in as '{user.username}' on a "
+                   f"new device. If this wasn't you, ask an administrator to reset your password.")
+        sent_to = mask_email(user.email)
+    else:
+        send_sms(settings, user.mobile, text)
+        sent_to = mask_mobile(user.mobile)
     result = {"status": "otp_required", "challenge_id": str(challenge.id), "purpose": purpose,
+              "channel": "email" if purpose == "device" else "sms", "sent_to": sent_to,
               "masked_mobile": mask_mobile(user.mobile), "expires_in": settings.otp_ttl_seconds}
     if settings.dev_expose_otp:
         result["dev_code"] = code

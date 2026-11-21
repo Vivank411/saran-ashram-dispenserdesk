@@ -26,6 +26,7 @@ _FRIENDLY = {
     "username": "Username must be 3–40 characters: lowercase letters, numbers, dot or underscore (no spaces).",
     "mobile": "Enter a valid mobile number of 10 digits, e.g. 9876543210 or +91 98765 43210.",
     "full_name": "Enter the full name (at least 2 characters).",
+    "email": "Enter a valid email address, e.g. name@gmail.com, or leave it empty.",
 }
 
 

@@ -93,6 +93,7 @@ class UserCreate(_In):
     full_name: str = Field(min_length=2, max_length=120)
     username: str = Field(pattern=r"^[a-z0-9._]{3,40}$")
     mobile: str = Field("", pattern=r"^(\+?[0-9 ]{10,16})?$")  # optional in standalone mode
+    email: str = Field("", max_length=254, pattern=r"^([^@\s]+@[^@\s]+\.[^@\s]+)?$")  # sign-in codes (standalone email OTP)
     role: RoleName
     password: str = Field(min_length=1, max_length=200)
 
@@ -101,6 +102,7 @@ class UserUpdate(_In):
     role: RoleName
     is_active: bool
     offline_login_enabled: bool
+    email: str | None = Field(None, max_length=254, pattern=r"^([^@\s]+@[^@\s]+\.[^@\s]+)?$")  # None = unchanged
 
 
 class PasswordResetIn(_In):

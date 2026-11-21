@@ -19,3 +19,12 @@ services:
         value: "true"
       - key: COOKIE_SECURE
         value: "true"
+      # Email sign-in code on new devices (see DEPLOYMENT_GUIDE.md, "Email OTP")
+      - key: EMAIL_OTP
+        value: "false"
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: EMAIL_FROM
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false

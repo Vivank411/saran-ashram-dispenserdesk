@@ -169,9 +169,11 @@ export default function LoginPage() {
               </form>
             ) : (
               <form onSubmit={submitOtp} className="flex flex-col gap-3">
-                <Notice>{otp.purpose === "verify" && <b>Verify your mobile number. </b>}A 6-digit code was sent to <b>{otp.masked_mobile}</b>.
-                  It expires in {Math.round(otp.expires_in / 60)} minutes.</Notice>
-                {otp.dev_code && <div className="rounded border border-dashed border-teal-300 bg-teal-50 p-2.5 text-xs">Development SMS: <b className="tracking-widest">{otp.dev_code}</b></div>}
+                <Notice>{otp.purpose === "verify" && <b>Verify your mobile number. </b>}{otp.purpose === "device" && <b>New device. </b>}
+                  A 6-digit code was {otp.channel === "email" ? "emailed" : "sent"} to <b>{otp.sent_to || otp.masked_mobile}</b>.
+                  It expires in {Math.round(otp.expires_in / 60)} minutes.{otp.channel === "email" && " Check your spam folder if you don't see it."}
+                  {otp.purpose === "device" && " This device will be remembered for 30 days."}</Notice>
+                {otp.dev_code && <div className="rounded border border-dashed border-teal-300 bg-teal-50 p-2.5 text-xs">{otp.channel === "email" ? "Development email" : "Development SMS"}: <b className="tracking-widest">{otp.dev_code}</b></div>}
                 <Field label="One-time code">
                   <input className="input tracking-[0.4em]" inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus
                     value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} />

@@ -48,6 +48,20 @@ class Settings(BaseSettings):
     # standalone = one server only (e.g. Render + Neon): no cloud peer, nothing is queued for sync
     standalone: bool = False
 
+    # Email OTP for standalone mode: a code is emailed the first time a user signs in on a new device,
+    # then that device is trusted for trusted_device_days. Users without an email sign in with password only.
+    email_otp: bool = False
+    email_provider: Literal["console", "brevo", "smtp"] = "console"
+    email_from: str = ""            # verified sender address, e.g. dispensary@gmail.com
+    email_from_name: str = "Dispensary Desk"
+    brevo_api_key: str = ""         # Brevo (free 300 emails/day) HTTP API key — works where SMTP ports are blocked
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_ssl: bool = False          # True for port 465, False = STARTTLS (587)
+    trusted_device_days: int = 30
+
     # inventory
     low_stock_threshold_default: int = 50
 
@@ -65,6 +79,10 @@ class Settings(BaseSettings):
     def is_standalone(self) -> bool:
         return self.is_hospital and self.standalone
 
+    @property
+    def email_otp_enabled(self) -> bool:
+        return self.is_standalone and self.email_otp
+
     @model_validator(mode="after")
     def _production_guards(self) -> "Settings":
         if self.environment == "production":
@@ -76,6 +94,15 @@ class Settings(BaseSettings):
                 raise ValueError("DEV_EXPOSE_OTP must be false in production")
             if self.database_url.startswith("sqlite"):
                 raise ValueError("Production requires PostgreSQL (DATABASE_URL)")
+            if self.email_otp_enabled:
+                if self.email_provider == "console":
+                    raise ValueError("EMAIL_PROVIDER must be brevo or smtp in production when EMAIL_OTP is on")
+                if not self.email_from:
+                    raise ValueError("EMAIL_FROM is required when EMAIL_OTP is on")
+                if self.email_provider == "brevo" and not self.brevo_api_key:
+                    raise ValueError("BREVO_API_KEY is required for EMAIL_PROVIDER=brevo")
+                if self.email_provider == "smtp" and not (self.smtp_host and self.smtp_user and self.smtp_password):
+                    raise ValueError("SMTP_HOST, SMTP_USER and SMTP_PASSWORD are required for EMAIL_PROVIDER=smtp")
             if self.is_cloud and not self.cookie_secure:
                 raise ValueError("COOKIE_SECURE must be true for the cloud deployment (HTTPS)")
         return self

@@ -37,7 +37,7 @@ def system_status(app: FastAPI, db: Session) -> dict:
     s: Settings = app.state.settings
     base = {"role": s.app_role, "hospital_name": display_name(db, s), "server_time": utcnow().isoformat(),
             "low_stock_threshold": low_stock_threshold(db, s), "last_sync": last_sync(db, s), "timezone": s.timezone,
-            "standalone": s.is_standalone}
+            "standalone": s.is_standalone, "email_otp": s.email_otp_enabled}
     if s.is_standalone:
         return {**base, "hospital_reachable": True, "live_operations": True, "cloud_reachable": True,
                 "link_checked_at": None, "pending": 0, "failed": 0, "conflicts": 0}

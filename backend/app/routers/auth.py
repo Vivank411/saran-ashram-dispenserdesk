@@ -11,9 +11,14 @@ from ..util import AppError, iso
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 REFRESH_COOKIE = "dd_refresh"
+DEVICE_COOKIE = "dd_device"
 
 
 def _respond(result: dict, response: Response, settings: Settings) -> dict:
+    device = result.pop("device_token", None)
+    if device:  # this browser passed the email code: skip it here for trusted_device_days
+        response.set_cookie(DEVICE_COOKIE, device, httponly=True, secure=settings.cookie_secure, samesite="strict",
+                            max_age=settings.trusted_device_days * 86400, path="/api/auth")
     if result.get("status") == "ok":
         response.set_cookie(REFRESH_COOKIE, result.pop("refresh_token"), httponly=True, secure=settings.cookie_secure,
                             samesite="strict", max_age=settings.session_hours * 3600, path="/api/auth")
@@ -41,7 +46,8 @@ def run_setup(body: SetupIn, request: Request, db: Session = Depends(get_db), se
 def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db),
           settings: Settings = Depends(get_settings)):
     request.app.state.limiter.check(f"login:{client_ip(request)}", settings.login_rate_per_minute)
-    result = auth.login(db, settings, request.app.state.peer, body.username, body.password, **_ctx(request))
+    result = auth.login(db, settings, request.app.state.peer, body.username, body.password, **_ctx(request),
+                        device_token=request.cookies.get(DEVICE_COOKIE))
     return _respond(result, response, settings)
 
 
