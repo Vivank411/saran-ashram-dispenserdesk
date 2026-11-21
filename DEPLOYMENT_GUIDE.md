@@ -107,6 +107,17 @@ Oracle's Always Free VM runs 24/7 with no time limit and no sleeping, unlike Ren
 
 ---
 
+## ⏰ Keep the Render backend awake (free)
+
+Render's free plan puts the backend to sleep after 15 minutes without visitors. The next visitor then waits 30–60 seconds. Two free pingers keep it awake:
+
+1. **GitHub Actions (already set up):** `.github/workflows/keep-backend-awake.yml` pings `/api/health` every 10 minutes. Check it under GitHub ➔ **Actions** ➔ *Keep backend awake*. GitHub turns scheduled workflows off after 60 days without commits; click **Enable workflow** there if that happens.
+2. **UptimeRobot (recommended backup, 2 minutes):** sign up free at [uptimerobot.com](https://uptimerobot.com) ➔ **New monitor** ➔ type **HTTP(s)** ➔ URL `https://saran-ashram-dispenserdesk.onrender.com/api/health` ➔ interval **5 minutes** ➔ Create. It also emails you if the backend goes down.
+
+Render's 750 free hours a month cover **one** service running all the time. Don't run a second free Render service on the same account.
+
+---
+
 ## 📧 Email OTP (sign-in code on new devices, free)
 
 When this is on, each user who has an **email** gets a 6-digit code by email the first time they sign in on a new phone or computer. After that, the device is remembered for 30 days. Users without an email keep signing in with just their password.
