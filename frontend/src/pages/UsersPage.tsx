@@ -7,6 +7,16 @@ import { Avatar, Dot, Field, Modal, Notice, PageHeader, Panel, Table } from "../
 import { ago, fmtTime } from "../lib/format";
 import { useAction, useGet, useStatus } from "../lib/hooks";
 
+const MIN_PASSWORD = 6;
+
+function validateNewUser(f: { full_name: string; username: string; mobile: string; password: string }): string {
+  if (f.full_name.trim().length < 2) return "Enter the full name (at least 2 letters).";
+  if (!/^[a-z0-9._]{3,40}$/.test(f.username)) return "Username: 3–40 lowercase letters, numbers, dot or underscore (no spaces).";
+  if (!/^\+?[0-9 ]{10,16}$/.test(f.mobile.trim())) return "Enter a valid mobile number (10 digits, e.g. 9876543210).";
+  if (f.password.length < MIN_PASSWORD) return `Password must be at least ${MIN_PASSWORD} characters.`;
+  return "";
+}
+
 interface Meta { roles: string[]; permissions: Record<string, string>; matrix: Record<string, string[]> }
 
 export default function UsersPage() {
@@ -30,12 +40,18 @@ export default function UsersPage() {
   const [form, setForm] = useState({ full_name: "", username: "", mobile: "", role: "Biller", password: "" });
   const [edit, setEdit] = useState({ role: "", is_active: true, offline_login_enabled: true });
   const [newPassword, setNewPassword] = useState("");
+  const [formError, setFormError] = useState("");
+  const submitCreate = () => {
+    const err = validateNewUser(form);
+    setFormError(err);
+    if (!err) create.mutate(form);
+  };
   const users = data?.items ?? [];
 
   return (
     <>
       <PageHeader title="Users & access" sub="Staff accounts and what each role can do. Every permission is enforced by the server."
-        actions={<button className="btn btn-primary" disabled={!directoryOk} onClick={() => setCreating(true)}><Icon name="plus" />Add user</button>} />
+        actions={<button className="btn btn-primary" disabled={!directoryOk} onClick={() => { setFormError(""); setCreating(true); }}><Icon name="plus" />Add user</button>} />
       {!directoryOk && <Notice tone="warn">The internet is unavailable, so accounts can't be added or changed right now. Existing staff can still sign in offline,
         and you can still unlock accounts or sign users out.</Notice>}
 
@@ -95,8 +111,8 @@ export default function UsersPage() {
 
       {creating && (
         <Modal title="Add a user" onClose={() => setCreating(false)} wide
-          sub="They verify their mobile number with a one-time code on first sign-in. After that they can also sign in offline at the hospital."
-          footer={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn btn-primary" disabled={create.isPending} onClick={() => create.mutate(form)}>Add user</button></>}>
+          sub={status?.standalone ? "They can sign in right away with this username and password." : "They verify their mobile number with a one-time code on first sign-in. After that they can also sign in offline at the hospital."}
+          footer={<><button className="btn" onClick={() => setCreating(false)}>Cancel</button><button className="btn btn-primary" disabled={create.isPending} onClick={submitCreate}>Add user</button></>}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full name"><input className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
             <Field label="Username" hint="Lowercase letters, numbers, dot or underscore"><input className="input" value={form.username} placeholder="e.g. priya.s" onChange={(e) => setForm({ ...form, username: e.target.value.toLowerCase() })} /></Field>
@@ -104,8 +120,9 @@ export default function UsersPage() {
             <Field label="Role">
               <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>{roles.map((r) => <option key={r}>{r}</option>)}</select>
             </Field>
-            <Field label="Temporary password" hint="At least 8 characters" className="sm:col-span-2"><input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
+            <Field label="Password" hint={`At least ${MIN_PASSWORD} characters — letters, numbers or anything`} className="sm:col-span-2"><input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
           </div>
+          {formError && <div className="mt-4"><Notice tone="warn">{formError}</Notice></div>}
         </Modal>
       )}
       {editing && (
@@ -128,9 +145,9 @@ export default function UsersPage() {
       )}
       {resetting && (
         <Modal title={`Reset password · ${resetting.full_name}`} sub="The user is signed out everywhere and must use the new password." onClose={() => setResetting(null)}
-          footer={<><button className="btn" onClick={() => setResetting(null)}>Cancel</button><button className="btn btn-primary" disabled={newPassword.length < 8 || reset.isPending}
+          footer={<><button className="btn" onClick={() => setResetting(null)}>Cancel</button><button className="btn btn-primary" disabled={newPassword.length < MIN_PASSWORD || reset.isPending}
             onClick={() => reset.mutate({ id: resetting.id, password: newPassword })}>Reset password</button></>}>
-          <Field label="New password" hint="At least 8 characters"><input className="input" type="password" autoFocus value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></Field>
+          <Field label="New password" hint={`At least ${MIN_PASSWORD} characters`}><input className="input" type="password" autoFocus value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></Field>
         </Modal>
       )}
     </>

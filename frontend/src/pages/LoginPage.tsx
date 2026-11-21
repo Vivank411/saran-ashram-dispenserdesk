@@ -206,7 +206,7 @@ function SignUpForm({ onDone }: { onDone: (username: string) => void }) {
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (f.password.length < 8) return setError("Password must be at least 8 characters.");
+    if (f.password.length < 6) return setError("Password must be at least 6 characters.");
     if (f.password !== f.confirm) return setError("The two passwords do not match.");
     setBusy(true);
     try {
@@ -237,7 +237,7 @@ function SignUpForm({ onDone }: { onDone: (username: string) => void }) {
         <Field label="Mobile number"><input className="input" required placeholder="+91 98xxx xxxxx" value={f.mobile} onChange={set("mobile")} /></Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Password (min 8 characters)"><input className="input" type="password" required autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
+        <Field label="Password (min 6 characters)"><input className="input" type="password" required autoComplete="new-password" value={f.password} onChange={set("password")} /></Field>
         <Field label="Confirm password"><input className="input" type="password" required autoComplete="new-password" value={f.confirm} onChange={set("confirm")} /></Field>
       </div>
       <button className="btn btn-primary btn-lg mt-2 w-full" disabled={busy}>{busy ? "Setting up…" : "Create Admin account"}</button>

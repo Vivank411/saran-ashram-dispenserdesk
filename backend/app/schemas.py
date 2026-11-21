@@ -80,7 +80,7 @@ class SetupAccount(_In):
     full_name: str = Field(min_length=2, max_length=120)
     username: str = Field(pattern=r"^[a-z0-9._]{3,40}$")
     mobile: str = Field(pattern=r"^\+?[0-9 ]{10,16}$")
-    password: str = Field(min_length=8, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
 
 
 class SetupIn(SetupAccount):
@@ -94,7 +94,7 @@ class UserCreate(_In):
     username: str = Field(pattern=r"^[a-z0-9._]{3,40}$")
     mobile: str = Field(pattern=r"^\+?[0-9 ]{10,16}$")
     role: RoleName
-    password: str = Field(min_length=8, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
 
 
 class UserUpdate(_In):
@@ -104,4 +104,4 @@ class UserUpdate(_In):
 
 
 class PasswordResetIn(_In):
-    password: str = Field(min_length=8, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
