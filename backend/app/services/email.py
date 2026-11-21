@@ -1,4 +1,4 @@
-"""Outgoing email for sign-in codes: Brevo HTTP API (free tier), plain SMTP, or console (development)."""
+"""Outgoing email for sign-in codes: Gmail via Apps Script (free), Brevo HTTP API, plain SMTP, or console (development)."""
 import logging
 import smtplib
 import ssl
@@ -21,7 +21,19 @@ def mask_email(email: str | None) -> str:
 
 def send_email(settings: Settings, to: str, subject: str, text: str) -> None:
     try:
-        if settings.email_provider == "brevo":
+        if settings.email_provider == "gmail_script":
+            # Apps Script answers the POST with a redirect to the result; the email is already sent by then.
+            r = httpx.post(settings.gmail_script_url, timeout=30, follow_redirects=True,
+                           json={"token": settings.gmail_script_token, "to": to, "subject": subject, "text": text,
+                                 "name": settings.email_from_name})
+            r.raise_for_status()
+            try:
+                ok = r.json().get("ok") is True
+            except ValueError:
+                ok = False
+            if not ok:
+                raise httpx.HTTPError(f"Apps Script refused: {r.text[:200]}")
+        elif settings.email_provider == "brevo":
             r = httpx.post("https://api.brevo.com/v3/smtp/email", timeout=15,
                            headers={"api-key": settings.brevo_api_key, "accept": "application/json"},
                            json={"sender": {"email": settings.email_from, "name": settings.email_from_name},

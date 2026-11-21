@@ -51,9 +51,12 @@ class Settings(BaseSettings):
     # Email OTP for standalone mode: a code is emailed the first time a user signs in on a new device,
     # then that device is trusted for trusted_device_days. Users without an email sign in with password only.
     email_otp: bool = False
-    email_provider: Literal["console", "brevo", "smtp"] = "console"
+    email_provider: Literal["console", "gmail_script", "brevo", "smtp"] = "console"
     email_from: str = ""            # verified sender address, e.g. dispensary@gmail.com
     email_from_name: str = "Dispensary Desk"
+    # Free: your own Gmail via a Google Apps Script web app (deploy/email/gmail-otp.gs) — HTTPS, so it works on Render
+    gmail_script_url: str = ""      # https://script.google.com/macros/s/.../exec
+    gmail_script_token: str = ""    # same random secret as TOKEN in the script
     brevo_api_key: str = ""         # Brevo (free 300 emails/day) HTTP API key — works where SMTP ports are blocked
     smtp_host: str = ""
     smtp_port: int = 587
@@ -96,9 +99,11 @@ class Settings(BaseSettings):
                 raise ValueError("Production requires PostgreSQL (DATABASE_URL)")
             if self.email_otp_enabled:
                 if self.email_provider == "console":
-                    raise ValueError("EMAIL_PROVIDER must be brevo or smtp in production when EMAIL_OTP is on")
-                if not self.email_from:
+                    raise ValueError("EMAIL_PROVIDER must be gmail_script, brevo or smtp in production when EMAIL_OTP is on")
+                if not self.email_from and self.email_provider != "gmail_script":
                     raise ValueError("EMAIL_FROM is required when EMAIL_OTP is on")
+                if self.email_provider == "gmail_script" and not (self.gmail_script_url and len(self.gmail_script_token) >= 16):
+                    raise ValueError("GMAIL_SCRIPT_URL and GMAIL_SCRIPT_TOKEN (16+ characters) are required for EMAIL_PROVIDER=gmail_script")
                 if self.email_provider == "brevo" and not self.brevo_api_key:
                     raise ValueError("BREVO_API_KEY is required for EMAIL_PROVIDER=brevo")
                 if self.email_provider == "smtp" and not (self.smtp_host and self.smtp_user and self.smtp_password):

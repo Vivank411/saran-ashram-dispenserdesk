@@ -102,3 +102,25 @@ def test_production_requires_real_email_provider():
     with pytest.raises(ValueError):
         Settings(environment="production", app_role="hospital", standalone=True, email_otp=True, email_provider="console",
                  jwt_secret="x" * 40, sync_shared_secret="y" * 40, database_url="postgresql+psycopg://u:p@h/db")
+
+
+def test_gmail_script_provider(monkeypatch):
+    import httpx
+
+    from app.services import email
+    from app.util import AppError
+
+    sent = {}
+
+    def fake_post(url, **kw):
+        sent.update(url=url, **kw["json"])
+        ok = kw["json"]["token"] == "t" * 20
+        return httpx.Response(200, json={"ok": ok}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(email.httpx, "post", fake_post)
+    s = Settings(environment="test", email_provider="gmail_script", gmail_script_url="https://script.google.com/x/exec",
+                 gmail_script_token="t" * 20)
+    email.send_email(s, "a@example.com", "123456 code", "body")
+    assert sent["to"] == "a@example.com" and sent["url"].endswith("/exec")
+    with pytest.raises(AppError):
+        email.send_email(s.model_copy(update={"gmail_script_token": "wrong-token-value"}), "a@example.com", "s", "b")
