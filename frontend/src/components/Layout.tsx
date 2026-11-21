@@ -55,6 +55,7 @@ export default function Layout() {
   }, []);
 
   const isCloud = status?.role === "cloud";
+  const standalone = !!status?.standalone; // single server: no sync to show
   const live = status?.live_operations ?? true;
   const conflicts = status?.conflicts ?? 0;
   const queued = (status?.pending ?? 0) + (status?.failed ?? 0);
@@ -63,7 +64,6 @@ export default function Layout() {
 
   const conn = conflicts ? { tone: "bad", icon: "alertCircle" as IconName, text: `${conflicts} sync conflict${conflicts > 1 ? "s" : ""}` }
     : isCloud ? (live ? { tone: "good", icon: "server" as IconName, text: "Hospital server online" } : { tone: "bad", icon: "cloudOff" as IconName, text: "Hospital server unreachable" })
-    : status?.standalone ? { tone: "good", icon: "server" as IconName, text: "Standalone server" }
     : status?.cloud_reachable ? (queued ? { tone: "warn", icon: "sync" as IconName, text: `Syncing · ${queued} pending` } : { tone: "good", icon: "cloud" as IconName, text: "Cloud in sync" })
     : { tone: "warn", icon: "cloudOff" as IconName, text: `Offline · ${queued} queued` };
   const connCls = { good: "border-good-line bg-good-soft text-good", warn: "border-warn-line bg-warn-soft text-warn", bad: "border-danger-line bg-danger-soft text-danger" }[conn.tone];
@@ -83,7 +83,7 @@ export default function Layout() {
         </div>
         <nav className="flex-1 overflow-y-auto px-3 pb-4">
           {NAV.map((sec) => {
-            const items = sec.items.filter((i) => !i.perms || i.perms.some(can));
+            const items = sec.items.filter((i) => (!i.perms || i.perms.some(can)) && !(standalone && i.to === "/sync"));
             if (!items.length) return null;
             return (
               <div key={sec.section} className="mb-5">
@@ -107,12 +107,14 @@ export default function Layout() {
             );
           })}
         </nav>
-        <div className="m-3 rounded-xl bg-white/[0.05] p-3 ring-1 ring-white/10">
-          <div className="flex items-center gap-2 text-[12px] font-medium text-slate-200">
-            <span className={`h-2 w-2 rounded-full ${conn.tone === "good" ? "bg-emerald-400" : conn.tone === "warn" ? "bg-amber-400" : "bg-red-400"}`} />{conn.text}
+        {!standalone && (
+          <div className="m-3 rounded-xl bg-white/[0.05] p-3 ring-1 ring-white/10">
+            <div className="flex items-center gap-2 text-[12px] font-medium text-slate-200">
+              <span className={`h-2 w-2 rounded-full ${conn.tone === "good" ? "bg-emerald-400" : conn.tone === "warn" ? "bg-amber-400" : "bg-red-400"}`} />{conn.text}
+            </div>
+            <div className="mt-1 text-[11px] text-slate-400">Last sync {ago(status?.last_sync)}</div>
           </div>
-          <div className="mt-1 text-[11px] text-slate-400">{status?.standalone ? "Data stored on this server" : <>Last sync {ago(status?.last_sync)}</>}</div>
-        </div>
+        )}
       </aside>
 
       <main className="min-w-0">
@@ -126,9 +128,11 @@ export default function Layout() {
             </nav>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <span className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold md:inline-flex ${connCls}`}>
-              <Icon name={conn.icon} className="h-3.5 w-3.5" />{conn.text}
-            </span>
+            {!standalone && (
+              <span className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold md:inline-flex ${connCls}`}>
+                <Icon name={conn.icon} className="h-3.5 w-3.5" />{conn.text}
+              </span>
+            )}
             <div className="hidden text-right leading-tight xl:block">
               <div className="text-[13px] font-semibold text-ink tnum">{now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}</div>
               <div className="text-[11px] text-muted">{now.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" })}</div>

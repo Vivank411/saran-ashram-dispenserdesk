@@ -20,7 +20,6 @@ export default function DashboardPage() {
     status?.conflicts ? { tone: "bg-danger-soft text-danger", icon: "alertCircle", title: "Needs review", text: `${status.conflicts} conflict(s) — synchronization paused` }
       : isCloud ? (live ? { tone: "bg-good-soft text-good", icon: "server", title: "Hospital server online", text: "Live operations available" }
         : { tone: "bg-danger-soft text-danger", icon: "cloudOff", title: "Hospital unreachable", text: "Showing last synchronized data" })
-      : status?.standalone ? { tone: "bg-good-soft text-good", icon: "server", title: "Standalone server", text: "All data is stored on this server" }
       : status?.cloud_reachable ? { tone: "bg-good-soft text-good", icon: "cloud", title: "Cloud in sync", text: "All changes backed up to the cloud" }
         : { tone: "bg-warn-soft text-warn", icon: "cloudOff", title: "Working offline", text: "Changes are queued and will sync automatically" };
 
@@ -85,6 +84,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="min-w-0">
+          {!status?.standalone && (
           <Panel title="Synchronization" actions={can("sync.view") && <Link className="btn btn-sm" to="/sync">Details</Link>}>
             <div className="flex items-center gap-3">
               <span className={`grid h-11 w-11 place-items-center rounded-xl ${sync.tone}`}><Icon name={sync.icon} className="h-5 w-5" /></span>
@@ -97,6 +97,7 @@ export default function DashboardPage() {
             </dl>
             <p className="mt-3 text-xs text-muted">Last successful sync: <span className="font-medium text-ink-soft">{fmtDateTime(status?.last_sync)}</span> ({ago(status?.last_sync)})</p>
           </Panel>
+          )}
 
           <Panel title="Low-stock alerts" sub={`${d?.active_alerts ?? 0} active · at or below ${d?.threshold ?? 50} units`}
             actions={<Link className="btn btn-sm" to="/alerts">View all</Link>} flush>

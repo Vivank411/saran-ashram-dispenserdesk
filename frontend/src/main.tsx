@@ -8,7 +8,8 @@ import { ToastProvider } from "./components/Toasts";
 import "./index.css";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 5_000, refetchOnWindowFocus: true } },
+  // every screen re-reads the server every 15 s, so changes made at other counters show up without a reload
+  defaultOptions: { queries: { retry: 1, staleTime: 5_000, refetchOnWindowFocus: true, refetchInterval: 15_000 } },
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
